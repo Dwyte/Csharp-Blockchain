@@ -15,13 +15,11 @@ namespace Blockchain
             Blockchain coin = new Blockchain();
             coin.CreateGenesisBlock();
 
-            coin.CreateTransaction(new Transaction("address1","address2", 50));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50));
-            Console.ReadLine();
-
+            coin.CreateTransaction(new Transaction("address1","address2", 50,1));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50,2));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50,3));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50,4));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50,5));
             coin.MineSelectedTransactions("address3");
 
             Console.WriteLine(BlockchainFunctions.Stringify(coin));
@@ -102,8 +100,18 @@ namespace Blockchain
         public Transaction[] SelectPendingTransactions(int blockSize)
         {
             List<Transaction> selectedTransactions = new List<Transaction>();
-            pendingTransactions.Insert(0 , new Transaction(null, "MinerAddress", 50));
+            selectedTransactions.Insert(0 , new Transaction(null, "MinerAddress", 50));
 
+
+            // Sort Pending Transactions according to the fee (descending)
+            Array.Sort(pendingTransactions.ToArray(), delegate (Transaction tx1, Transaction tx2)
+            {
+                return tx1.fee.CompareTo(tx2.fee);
+            });
+            pendingTransactions.Reverse();
+
+
+            // Select transactions to be mined from the pending array
             for (int i = 0; i < blockSize; i++)
             {
                 if (i > pendingTransactions.ToArray().Length)
@@ -147,9 +155,7 @@ namespace Blockchain
             {
                 header.nonce++;
                 hash = CalculateHash();
-                Console.Write("\r Nonce: {0} Hash: {1}", header.nonce, hash);
             }
-            Console.WriteLine("\n Proof of Work Added!, Block Mined.");
         }
     }
 
@@ -176,12 +182,14 @@ namespace Blockchain
         public string fromAddress;
         public string toAddress;
         public int amount;
+        public int fee;
 
-        public Transaction(string FromAddress, string ToAddress, int Amount)
+        public Transaction(string FromAddress, string ToAddress, int Amount, int Fee = 0)
         {
             fromAddress = FromAddress;
             toAddress = ToAddress;
             amount = Amount;
+            fee = Fee;
         }
     }
 
