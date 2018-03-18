@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -18,7 +16,13 @@ namespace Blockchain
             coin.CreateGenesisBlock();
 
             coin.CreateTransaction(new Transaction("address1","address2", 50));
-            coin.minePendingTransaction("address3");
+            coin.CreateTransaction(new Transaction("address1", "address2", 50));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50));
+            Console.ReadLine();
+
+            coin.MineSelectedTransactions("address3");
 
             Console.WriteLine(BlockchainFunctions.Stringify(coin));
             Console.ReadLine();
@@ -45,6 +49,11 @@ namespace Blockchain
             var settings = new JsonSerializerSettings { ContractResolver = new CamelCasePropertyNamesContractResolver() };
             return JsonConvert.SerializeObject(obj, Formatting.Indented, settings);
         }
+
+        public static long Timestamp()
+        {
+            return long.Parse(DateTime.Now.ToString("yyyyMMddhhmmss"));
+        }
     }
 
 
@@ -54,16 +63,18 @@ namespace Blockchain
         public List<Block> chain = new List<Block>();
         public List<Transaction> pendingTransactions = new List<Transaction>();
         public int difficulty;
+        public int blockSize;
 
         public Blockchain()
         {
-            difficulty = 4;
+            difficulty = 2;
+            blockSize = 4;
         }
 
         //-----Functions
         public void CreateGenesisBlock()
         {
-            BlockHeader genesisBlockHeader = new BlockHeader(0, long.Parse(DateTime.Now.ToString("yyyyMMddhhmmss")), "0000000000000000000000000000000000000000000000000000000000000000");
+            BlockHeader genesisBlockHeader = new BlockHeader(0, BlockchainFunctions.Timestamp(), "0000000000000000000000000000000000000000000000000000000000000000");
             Block genesisBlock = new Block(genesisBlockHeader, pendingTransactions.ToArray());
             genesisBlock.MineBlock(difficulty);
             chain.Add(genesisBlock);
@@ -80,14 +91,28 @@ namespace Blockchain
             pendingTransactions.Add(tx);
         }
 
-        public void minePendingTransaction(string minerAddress)
+        public void MineSelectedTransactions(string minerAddress)
         {
-            pendingTransactions.Add(new Transaction(null, minerAddress, 50));
-            BlockHeader newBlockHeader = new BlockHeader(chain.ToArray().Length, long.Parse(DateTime.Now.ToString("yyyyMMddhhmmss")), GetLatestBlock().hash);
-            Block newBlock = new Block(newBlockHeader, pendingTransactions.ToArray());
+            BlockHeader newBlockHeader = new BlockHeader(chain.ToArray().Length, BlockchainFunctions.Timestamp(), GetLatestBlock().hash);
+            Block newBlock = new Block(newBlockHeader, SelectPendingTransactions(blockSize));
             newBlock.MineBlock(difficulty);
             chain.Add(newBlock);
-            pendingTransactions.Clear();
+        }
+
+        public Transaction[] SelectPendingTransactions(int blockSize)
+        {
+            List<Transaction> selectedTransactions = new List<Transaction>();
+            pendingTransactions.Insert(0 , new Transaction(null, "MinerAddress", 50));
+
+            for (int i = 0; i < blockSize; i++)
+            {
+                if (i > pendingTransactions.ToArray().Length)
+                    return selectedTransactions.ToArray();
+
+                selectedTransactions.Add(pendingTransactions.ToArray()[0]);
+                pendingTransactions.Remove(pendingTransactions.ToArray()[0]);
+            }
+            return selectedTransactions.ToArray();
         }
     }
 
