@@ -13,7 +13,11 @@ namespace Blockchain
     {
         static void Main(string[] args)
         {
-            Console.WriteLine(BlockchainFunctions.SHA256(Console.ReadLine()));
+            Console.ReadLine();
+            Blockchain coin = new Blockchain();
+            coin.CreateTransaction(new Transaction("address1","address2", 50));
+            coin.minePendingTransaction("address3");
+            Console.WriteLine(BlockchainFunctions.Stringify(coin));
             Console.ReadLine();
         }
     }
@@ -44,23 +48,112 @@ namespace Blockchain
     //-----Parts of the Blockchain
     public class Blockchain
     {
+        public List<Block> chain = new List<Block>();
+        public List<Transaction> pendingTransactions = new List<Transaction>();
+        public int difficulty;
+
         public Blockchain()
         {
+            chain.Add(CreateGenesisBlock());
+            difficulty = 3;
+        }
 
+        //-----Functions
+        public Block CreateGenesisBlock()
+        {
+            BlockHeader genesisBlockHeader = new BlockHeader(0, long.Parse(DateTime.Now.ToString("yyyyMMddhhmmss")), "0000000000000000000000000000000000000000000000000000000000000000");
+            return new Block(genesisBlockHeader, pendingTransactions.ToArray());
+        }
+
+        public Block GetLatestBlock()
+        {
+            Block[] chainArray = chain.ToArray();
+            return chainArray[chainArray.Length - 1];
+        }
+
+        public void CreateTransaction(Transaction tx)
+        {
+            pendingTransactions.Add(tx);
+        }
+
+        public void minePendingTransaction(string minerAddress)
+        {
+            BlockHeader newBlockHeader = new BlockHeader(chain.ToArray().Length, long.Parse(DateTime.Now.ToString("yyyyMMddhhmmss")), GetLatestBlock().hash);
+            Block newBlock = new Block(newBlockHeader, pendingTransactions.ToArray());
+            newBlock.MineBlock(difficulty);
+            chain.Add(newBlock);
+            pendingTransactions.Clear();
+            pendingTransactions.Add(new Transaction(null, minerAddress, 50));
         }
     }
 
     public class Block
     {
-        public Block()
-        {
+        public BlockHeader header;
+        public Transaction[] transactionList;
+        public string hash;
 
+        public Block(BlockHeader Header, Transaction[] TransactionList)
+        {
+            header = Header;
+            transactionList = TransactionList;
+            hash = CalculateHash();
+        }
+
+        //-----Functions
+        public string CalculateHash()
+        {
+            return BlockchainFunctions.SHA256(header.blockNumber + header.previousHash + header.merkleRoot + header.timestamp + header.target + header.nonce);
+        }
+
+        public void MineBlock(int difficulty)
+        {
+            string zeroes = "";
+            for (int i = 0; i < difficulty; i++)
+            {
+                zeroes += "0";
+            }
+
+            while (hash.Substring(0, difficulty) != zeroes)
+            {
+                header.nonce++;
+                hash = CalculateHash();
+                Console.Write("\r Nonce: {0} Hash: {1}", header.nonce, hash);
+            }
+            Console.WriteLine("\n Proof of Work Added!, Block Mined.");
+        }
+    }
+
+    public class BlockHeader
+    {
+        public int blockNumber;
+        public string previousHash;
+        public string merkleRoot;
+        public long timestamp;
+        public int target;
+        public int nonce;
+
+
+        public BlockHeader(int BlockNumber, long Timestamp, string PreviousHash = "")
+        {
+            blockNumber = BlockNumber;
+            timestamp = Timestamp;
+            previousHash = PreviousHash;
         }
     }
 
     public class Transaction
     {
+        public string fromAddress;
+        public string toAddress;
+        public int amount;
 
+        public Transaction(string FromAddress, string ToAddress, int Amount)
+        {
+            fromAddress = FromAddress;
+            toAddress = ToAddress;
+            amount = Amount;
+        }
     }
 
 
