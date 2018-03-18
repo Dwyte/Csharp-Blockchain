@@ -15,8 +15,11 @@ namespace Blockchain
         {
             Console.ReadLine();
             Blockchain coin = new Blockchain();
+            coin.CreateGenesisBlock();
+
             coin.CreateTransaction(new Transaction("address1","address2", 50));
             coin.minePendingTransaction("address3");
+
             Console.WriteLine(BlockchainFunctions.Stringify(coin));
             Console.ReadLine();
         }
@@ -54,15 +57,16 @@ namespace Blockchain
 
         public Blockchain()
         {
-            chain.Add(CreateGenesisBlock());
-            difficulty = 3;
+            difficulty = 4;
         }
 
         //-----Functions
-        public Block CreateGenesisBlock()
+        public void CreateGenesisBlock()
         {
             BlockHeader genesisBlockHeader = new BlockHeader(0, long.Parse(DateTime.Now.ToString("yyyyMMddhhmmss")), "0000000000000000000000000000000000000000000000000000000000000000");
-            return new Block(genesisBlockHeader, pendingTransactions.ToArray());
+            Block genesisBlock = new Block(genesisBlockHeader, pendingTransactions.ToArray());
+            genesisBlock.MineBlock(difficulty);
+            chain.Add(genesisBlock);
         }
 
         public Block GetLatestBlock()
@@ -78,12 +82,12 @@ namespace Blockchain
 
         public void minePendingTransaction(string minerAddress)
         {
+            pendingTransactions.Add(new Transaction(null, minerAddress, 50));
             BlockHeader newBlockHeader = new BlockHeader(chain.ToArray().Length, long.Parse(DateTime.Now.ToString("yyyyMMddhhmmss")), GetLatestBlock().hash);
             Block newBlock = new Block(newBlockHeader, pendingTransactions.ToArray());
             newBlock.MineBlock(difficulty);
             chain.Add(newBlock);
             pendingTransactions.Clear();
-            pendingTransactions.Add(new Transaction(null, minerAddress, 50));
         }
     }
 
