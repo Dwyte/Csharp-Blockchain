@@ -16,10 +16,14 @@ namespace Blockchain
             coin.CreateGenesisBlock();
 
             coin.CreateTransaction(new Transaction("address1","address2", 50,1));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50,2));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50,3));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50,4));
-            coin.CreateTransaction(new Transaction("address1", "address2", 50,5));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50, 2));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50, 3));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50, 4));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50, 5));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50, 6));
+            coin.CreateTransaction(new Transaction("address1", "address2", 50, 7));
+
+
             coin.MineSelectedTransactions("address3");
 
             Console.WriteLine(BlockchainFunctions.Stringify(coin));
@@ -66,7 +70,7 @@ namespace Blockchain
         public Blockchain()
         {
             difficulty = 2;
-            blockSize = 4;
+            blockSize = 8;
         }
 
         //-----Functions
@@ -100,8 +104,6 @@ namespace Blockchain
         public Transaction[] SelectPendingTransactions(int blockSize)
         {
             List<Transaction> selectedTransactions = new List<Transaction>();
-            selectedTransactions.Insert(0 , new Transaction(null, "MinerAddress", 50));
-
 
             // Sort Pending Transactions according to the fee (descending)
             Array.Sort(pendingTransactions.ToArray(), delegate (Transaction tx1, Transaction tx2)
@@ -109,12 +111,13 @@ namespace Blockchain
                 return tx1.fee.CompareTo(tx2.fee);
             });
             pendingTransactions.Reverse();
+            pendingTransactions.Insert(0, new Transaction(null, "MinerAddress", 50));
 
 
             // Select transactions to be mined from the pending array
             for (int i = 0; i < blockSize; i++)
             {
-                if (i > pendingTransactions.ToArray().Length)
+                if (pendingTransactions.ToArray().Length == 0)
                     return selectedTransactions.ToArray();
 
                 selectedTransactions.Add(pendingTransactions.ToArray()[0]);
@@ -135,6 +138,7 @@ namespace Blockchain
             header = Header;
             transactionList = TransactionList;
             hash = CalculateHash();
+            header.merkleRoot = GetMerkleRoot();
         }
 
         //-----Functions
@@ -156,6 +160,108 @@ namespace Blockchain
                 header.nonce++;
                 hash = CalculateHash();
             }
+        }
+
+        public string GetMerkleRoot()
+        {
+            List<string> bottom = new List<string>();
+            List<string> middle = new List<string>();
+            List<string> top = new List<string>();
+            string merkleRoot = "";
+            string hashOfBottom = "";
+            string hashOfMiddle = "";
+            string hashOfTop = "";
+
+            // Hash all transactions first
+            for (int i = 0; i < transactionList.Length; i++)
+            {
+                bottom.Add(BlockchainFunctions.SHA256(BlockchainFunctions.Stringify(transactionList[i]))); //add the has to the bottom list
+                //Console.WriteLine("-" + BlockchainFunctions.Stringify(bottom));
+            }
+
+            for (int i = 0; i < bottom.ToArray().Length; i++)
+            {
+                //Check if i == to the last element of the array and if the array is has odd number of elements
+                if (i == bottom.ToArray().Length - 1 && (i+1)%2 != 0)
+                {
+                    hashOfBottom += bottom.ToArray()[i]+bottom.ToArray()[i];
+                    middle.Add(BlockchainFunctions.SHA256(hashOfBottom));
+
+                    Console.WriteLine("#1");
+
+                    if (middle.ToArray().Length == 1)
+                    {
+                        merkleRoot = middle.ToArray()[i];
+                        Console.WriteLine("#2");
+                        return merkleRoot;
+                    }
+                }
+                // Hash the hashes of the bottom list and put it in an array
+                if (i > 0 && (i+1)%2 == 0)
+                {
+                    hashOfBottom += bottom.ToArray()[i - 1];
+                    hashOfBottom += bottom.ToArray()[i];
+                    middle.Add(BlockchainFunctions.SHA256(hashOfBottom));
+                    hashOfBottom = "";
+                }
+            }
+
+
+            for (int i = 0; i < middle.ToArray().Length; i++)
+            {
+                //Check if i == to the last element of the array and if the array is has odd number of elements
+                if (i == middle.ToArray().Length - 1 && (i + 1) % 2 != 0)
+                {
+                    hashOfMiddle += middle.ToArray()[i] + middle.ToArray()[i];
+                    top.Add(BlockchainFunctions.SHA256(hashOfMiddle));
+                    Console.WriteLine("#3");
+
+                    if (top.ToArray().Length == 1)
+                    {
+                        merkleRoot = top.ToArray()[i];
+                        Console.WriteLine("#4");
+                        return merkleRoot;
+                    }
+
+                }
+                
+                // Hash the hashes of the bottom list and put it in an array
+                if (i > 0 && (i + 1) % 2 == 0)
+                {
+                    hashOfMiddle += middle.ToArray()[i - 1];
+                    hashOfMiddle += middle.ToArray()[i];
+                    top.Add(BlockchainFunctions.SHA256(hashOfBottom));
+                    hashOfMiddle = "";
+                }
+            }
+
+
+            for (int i = 0; i < top.ToArray().Length; i++)
+            {
+                //Check if i == to the last element of the array and if the array is has odd number of elements
+                if (i == top.ToArray().Length - 1 && (i + 1) % 2 != 0)
+                {
+                    hashOfTop += top.ToArray()[i] + top.ToArray()[i];
+                    merkleRoot = BlockchainFunctions.SHA256(hashOfTop);
+                    Console.WriteLine("#5");
+                    if (top.ToArray().Length == 1)
+                    {
+                        Console.WriteLine("#6");
+                        return merkleRoot;
+                    }
+                }
+
+                // Hash the hashes of the bottom list and put it in an array
+                if (i > 0 && (i + 1) % 2 == 0)
+                {
+                    hashOfTop += middle.ToArray()[i - 1];
+                    hashOfTop += middle.ToArray()[i];
+                    merkleRoot = BlockchainFunctions.SHA256(hashOfTop);
+                    Console.WriteLine("#7");
+                    return merkleRoot;
+                }
+            }
+            return merkleRoot;
         }
     }
 
